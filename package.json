@@ -1,0 +1,24 @@
+{
+  "name": "build-from-home",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thabsheerhussain/Build-From-Home.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/thabsheerhussain/Build-From-Home/issues"
+  },
+  "homepage": "https://github.com/thabsheerhussain/Build-From-Home#readme",
+  "dependencies": {
+    "discord.js": "^12.5.3",
+    "dotenv": "^9.0.2"
+  }
+}
