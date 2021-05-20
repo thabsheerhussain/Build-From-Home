@@ -4,9 +4,14 @@ const https = require('https');
 const fetch = require('node-fetch');
 const client = new Discord.Client();
 const db = require('./connection');
+const helpers = require('./helpers')
 
-  db.connect()
-
+db.connect((err)=>{
+  if(err)
+  console.log("ERROR :"+err);
+  else
+  console.log("DATABASE CONNECTED");
+})
 
 require('dotenv').config()
 
@@ -19,9 +24,11 @@ d = {"Alappuzha":301,"Ernakulam":307,"Idukki":306,"Kannur":297,"Kasaragod":295,
 "Pathanamthitta":300,"Thiruvananthapuram":296,"Thrissur":303,"Wayanad":299,"East Sikkim":535,
 "North Sikkim":537,"South Sikkim":538,"West Sikkim":536,"North Goa":151,"South Goa":152}
 
-function getSessionByDis(district){
+function getSessionByDis(district,age){
   did=d[district]
-  url='https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/findByDistrict?district_id='+did+'&date=20-05-2021'
+  let date = new Date();
+  date = `${date.getDate()}-${date.getMonth()+1}-${date.getFullYear()}`
+  url='https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/findByDistrict?district_id='+did+'&date='+date
   return axios.get(url,
     {
       headers: {
@@ -29,13 +36,12 @@ function getSessionByDis(district){
           'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:89.0) Gecko/20100101 Firefox/89.0',
       },
     },
-  )
-  
+  ) 
   .then(({ data }) =>{
-    //console.log(data.sessions.length);
     let session = ``
+    let ageGroup = (age>=18 && age<45)?18:45;
     for (var i=0;i<data.sessions.length;i++){
-      if(data.sessions[i].available_capacity > 0){
+      if(data.sessions[i].min_age_limit === ageGroup && data.sessions[i].available_capacity > 0){
         //session[i] = {"Available slotname":data.sessions[i].name,"Capacity":data.sessions[i].available_capacity,"Vaccine":data.sessions[i].vaccine,"Slots":data.sessions[i].slots}
         //console.log("Available slot: "+data.sessions[i].name+"\nCapacity: "+data.sessions[i].available_capacity+"\nVaccine:"+data.sessions[i].vaccine)
         temp = `1:${data.sessions[i].name}  2: ${data.sessions[i].available_capacity} 3: ${data.sessions[i].slots} \n`;
@@ -119,17 +125,23 @@ client.on('message', msg => {
   if (msg.content.startsWith("/dis")) {
     let dis = msg.content.split("/dis ")[1];
     let id = msg.author.id;
-    db.storeDis(id,dis)
+    helpers.saveDist(id,dis)
     }
-    
-    
-  
-  
   if (msg.content.startsWith("/age")) {
     let age = msg.content.split("/age ")[1];
-    let ida = msg.author.id
+    let id = msg.author.id
+    helpers.saveAge(id,age)
   }
-  //db.storeData(id,dis,age)
+  
+  if(msg.content==="/check"){
+    let id=msg.author.id;
+    helpers.getData(id).then((data)=>{
+      getSessionByDis(data.district, data.age).then(session=>{
+        if(!session) msg.reply("No sessions available")
+        else msg.reply(session)
+      })
+    })
+  }
 
 });
 
