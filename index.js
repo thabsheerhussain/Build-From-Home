@@ -3,6 +3,10 @@ const Discord = require('discord.js');
 const https = require('https');
 const fetch = require('node-fetch');
 const client = new Discord.Client();
+const db = require('./connection');
+
+  db.connect()
+
 
 require('dotenv').config()
 
@@ -26,14 +30,16 @@ function getSessionByDis(district){
       },
     },
   )
+  
   .then(({ data }) =>{
     //console.log(data.sessions.length);
-    var session={}
-    
+    let session = ``
     for (var i=0;i<data.sessions.length;i++){
       if(data.sessions[i].available_capacity > 0){
-        session[i] = {"Available slotname":data.sessions[i].name,"Capacity":data.sessions[i].available_capacity,"Vaccine":data.sessions[i].vaccine,"Slots":data.sessions[i].slots}
+        //session[i] = {"Available slotname":data.sessions[i].name,"Capacity":data.sessions[i].available_capacity,"Vaccine":data.sessions[i].vaccine,"Slots":data.sessions[i].slots}
         //console.log("Available slot: "+data.sessions[i].name+"\nCapacity: "+data.sessions[i].available_capacity+"\nVaccine:"+data.sessions[i].vaccine)
+        temp = `1:${data.sessions[i].name}  2: ${data.sessions[i].available_capacity} 3: ${data.sessions[i].slots} \n`;
+        session = session.concat(temp)
       }
     }
     return session
@@ -86,6 +92,7 @@ client.on('message', msg => {
 
   if (msg.content.startsWith("$pin")){
     pin = msg.content.split("$pin ")[1]
+  
     //getSessionByPin(pin);
     // pin=msg.content.split("$pin ")[1]
     getSessionByPin(pin).then(session=>{
@@ -99,24 +106,31 @@ client.on('message', msg => {
     district = msg.content.split("$dis ")[1]
     //console.log(d[district]);
     getSessionByDis(district).then(session =>{
-      // const embed = new Discord.MessageEmbed()
-      // // Set the title of the field
-      // .setTitle('Available Sessions')
-      // // Set the color of the embed
-      // .setColor(0xff0000)
-      // // Set the main content of the embed
-      // .setDescription(JSON.stringify(session["0"]));
-      // msg.channel.send(embed)
-      // console.log(session);
+      const embed = new Discord.MessageEmbed()
+      .setTitle('Sessions')
+      .setColor(0xff0000)
+      .setDescription(session);
+    msg.channel.send(embed);
 
-      for(var j=0;j<Object.keys(session).length;j++){
-        msg.reply("Available Sessions for district "+district+"\nName of centre: "+session[j]["Available slotname"]+"\nSlots:"+session[j]['Slots'])
-      }
-
-      
+      console.log({session})
     })
     
 }
+  if (msg.content.startsWith("/dis")) {
+    let dis = msg.content.split("/dis ")[1];
+    let id = msg.author.id;
+    db.storeDis(id,dis)
+    }
+    
+    
+  
+  
+  if (msg.content.startsWith("/age")) {
+    let age = msg.content.split("/age ")[1];
+    let ida = msg.author.id
+  }
+  //db.storeData(id,dis,age)
+
 });
 
 client.login(process.env.TOKEN);
@@ -126,26 +140,3 @@ client.login(process.env.TOKEN);
 
 
 
- // fetch('https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/findByDistrict?district_id=512&date=31-03-2021')
-  //   .then(res => res.json())
-  //   .then(json => console.log(json));
-
-  // https.get('https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/findByDistrict?district_id=535&date=19-05-2021', (res) => {
-	// 	res.on('data', (data) => {
-	// 	result=(JSON.parse(data))
-  //   console.log(result)
-	// 	})
-	// })
-  
-  // axios.get('https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/findByDistrict?district_id=577&date=19-05-2021', (res) => {
-	// 	res.on('data', (data) => {
-	// 		result=(JSON.parse(data))
-  //     console.log(result)
-	// 	})
-	// })
-
-
-  // url="https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/findByDistrict?district_id=578&date=19-05-2021"
-  // return fetch(url).then(res=>{
-  //   return res.json()
-  // }).then(data=>{return data})
