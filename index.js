@@ -1,10 +1,9 @@
 const axios = require('axios');
 const Discord = require('discord.js');
-const https = require('https');
-const fetch = require('node-fetch');
 const client = new Discord.Client();
 const db = require('./connection');
 const helpers = require('./helpers')
+require('dotenv').config()
 
 db.connect((err)=>{
   if(err)
@@ -13,18 +12,16 @@ db.connect((err)=>{
   console.log("DATABASE CONNECTED");
 })
 
-require('dotenv').config()
-
 client.on('ready', () => {
   console.log(`Logged in as ${client.user.tag}!`);
 });
 
-d = {"Alappuzha":301,"Ernakulam":307,"Idukki":306,"Kannur":297,"Kasaragod":295,
-"Kollam":298,"Kottayam":304,"Kozhikode":305,"Malappuram":302,"Palakkad":308,
-"Pathanamthitta":300,"Thiruvananthapuram":296,"Thrissur":303,"Wayanad":299,"East Sikkim":535,
-"North Sikkim":537,"South Sikkim":538,"West Sikkim":536,"North Goa":151,"South Goa":152}
+d = {"alappuzha":301,"ernakulam":307,"idukki":306,"kannur":297,"kasargod":295,
+"kollam":298,"kottayam":304,"kozhikode":305,"malappuram":302,"palakkad":308,
+"pathanamthitta":300,"thiruvananthapuram":296,"thrissur":303,"wayanad":299,"east sikkim":535,
+"north sikkim":537,"south sikkim":538,"west sikkim":536,"north goa":151,"south goa":152}
 
-function getSessionByDis(district,age){
+function getSessionByDisAge(district,age){
   did=d[district]
   let date = new Date();
   date = `${date.getDate()}-${date.getMonth()+1}-${date.getFullYear()}`
@@ -40,24 +37,59 @@ function getSessionByDis(district,age){
   .then(({ data }) =>{
     let session = ``
     let ageGroup = (age>=18 && age<45)?18:45;
+
+    if(data.sessions.length==0){
+      return `No sessions available`;
+    }
+    else{
+
     for (var i=0;i<data.sessions.length;i++){
       if(data.sessions[i].min_age_limit === ageGroup && data.sessions[i].available_capacity > 0){
-        //session[i] = {"Available slotname":data.sessions[i].name,"Capacity":data.sessions[i].available_capacity,"Vaccine":data.sessions[i].vaccine,"Slots":data.sessions[i].slots}
-        //console.log("Available slot: "+data.sessions[i].name+"\nCapacity: "+data.sessions[i].available_capacity+"\nVaccine:"+data.sessions[i].vaccine)
-        temp = `1:${data.sessions[i].name}  2: ${data.sessions[i].available_capacity} 3: ${data.sessions[i].slots} \n`;
+        temp = `🏥 :${data.sessions[i].name}, 💉 :${data.sessions[i].available_capacity}, 🕰️ :${data.sessions[i].slots} \n`;
         session = session.concat(temp)
       }
     }
     return session
+    }
+    
   
   })
   .catch((err) => console.log(err));
-  //console.log(data.sessions[0].name)
+}
+
+function getSessionByDis(district){
+  did=d[district]
+  let date = new Date();
+  date = `${date.getDate()}-${date.getMonth()+1}-${date.getFullYear()}`
+  url='https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/findByDistrict?district_id='+did+'&date='+date
+  return axios.get(url,
+    {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:89.0) Gecko/20100101 Firefox/89.0',
+      },
+    },
+  ) 
+  .then(({ data }) =>{
+    let session = ``
+    
+      for (var i=0;i<data.sessions.length;i++){
+        if(data.sessions[i].available_capacity > 0){
+          temp = `🏥 :${data.sessions[i].name},🧍 :${data.sessions[i].min_age_limit}+, 💉 :${data.sessions[i].available_capacity}, 🕰️ :${data.sessions[i].slots} \n`;
+          session = session.concat(temp)
+        }
+      }
+
+      return session
+    
+  })
+  .catch((err) => console.log(err));
 }
 
 function getSessionByPin(pin){
-  
-  url='https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/findByPin?pincode='+pin+'&date=20-05-2021'
+  let date = new Date();
+  date = `${date.getDate()}-${date.getMonth()+1}-${date.getFullYear()}`
+  url='https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/findByPin?pincode='+pin+'&date='+date
   return axios.get(url,
     {
       headers: {
@@ -67,28 +99,21 @@ function getSessionByPin(pin){
     },
   )
   .then(({ data }) =>{
-    //console.log(data.sessions.length);
     if(data.sessions.length==0){
-      return "no sessions available";
+      return `No sessions available`;
     }
     else{
-      var ss={}
+      var ss=``
       for (var i=0;i<data.sessions.length;i++){
-        if(data.sessions[i].available_capacity > 0){
-          // return "Available slot: "+data.sessions[i].name+",Capacity: "+data.sessions[i].available_capacity+"\nVaccine:"+data.sessions[i].vaccine
-          //return {"Available slot":data.sessions[i].name,"Capacity":data.sessions[i].available_capacity,"Vaccine":data.sessions[i].vaccine}
-          ss[i]={"Available slotname":data.sessions[i].name,"Capacity":data.sessions[i].available_capacity,"Vaccine":data.sessions[i].vaccine,"Slots":data.sessions[i].slots};
-          
+        if(data.sessions[i].available_capacity > 0){     
+          t=`🏥 :${data.sessions[i].name}, 💉: ${data.sessions[i].available_capacity}, 🕰️: ${data.sessions[i].slots} \n`;
+          ss = ss.concat(t)
         }
       }
-      //console.log(ss);
       return ss
-      
     }
   })
   .catch((err) => console.log(err));
-  //console.log(data.sessions[0].name)
-  
 }
 
 client.on('message', msg => {
@@ -96,39 +121,43 @@ client.on('message', msg => {
     msg.reply('Pong!');
   }
 
-  if (msg.content.startsWith("$pin")){
-    pin = msg.content.split("$pin ")[1]
-  
-    //getSessionByPin(pin);
-    // pin=msg.content.split("$pin ")[1]
+  if (msg.content.startsWith("/pin")){
+    pin = msg.content.split("/pin ")[1]
     getSessionByPin(pin).then(session=>{
-      //console.log(Object.keys(session).length);
-      for(var j=0;j<Object.keys(session).length;j++){
-        msg.reply("Available Sessions for Pin "+pin+"\nName: "+session[j]["Available slotname"]+"\nSlots:"+session[j]['Slots'])
-      }
+      const embed = new Discord.MessageEmbed()
+            .setTitle(`Session - ${pin}`)
+            .setColor(0xff0000)
+            .setDescription(session);
+          msg.channel.send(embed);
     })
   }
-  if(msg.content.startsWith("$dis")){
-    district = msg.content.split("$dis ")[1]
-    //console.log(d[district]);
-    getSessionByDis(district).then(session =>{
-      const embed = new Discord.MessageEmbed()
-      .setTitle('Sessions')
-      .setColor(0xff0000)
-      .setDescription(session);
-    msg.channel.send(embed);
-
-      console.log({session})
+  if(msg.content.startsWith("/dis")){
+    district = msg.content.split("/dis ")[1]
+    getSessionByDis(district.toLowerCase()).then(session =>{
+      if(!session){
+        const embed = new Discord.MessageEmbed()
+            .setTitle(`Session - ${district}`)
+            .setColor(0xff2000)
+            .setDescription("No Session Available");
+          msg.channel.send(embed);
+      }
+      else{
+        const embed = new Discord.MessageEmbed()
+            .setTitle(`${district}`)
+            .setColor(0xff0000)
+            .setDescription(session);
+          msg.channel.send(embed);
+      } 
     })
     
 }
-  if (msg.content.startsWith("/dis")) {
-    let dis = msg.content.split("/dis ")[1];
+  if (msg.content.startsWith("/reg_dis")) {
+    let dis = msg.content.split("/reg_dis ")[1];
     let id = msg.author.id;
-    helpers.saveDist(id,dis)
+    helpers.saveDist(id,dis.toLowerCase())
     }
-  if (msg.content.startsWith("/age")) {
-    let age = msg.content.split("/age ")[1];
+  if (msg.content.startsWith("/reg_age")) {
+    let age = msg.content.split("/reg_age ")[1];
     let id = msg.author.id
     helpers.saveAge(id,age)
   }
@@ -136,12 +165,37 @@ client.on('message', msg => {
   if(msg.content==="/check"){
     let id=msg.author.id;
     helpers.getData(id).then((data)=>{
-      getSessionByDis(data.district, data.age).then(session=>{
-        if(!session) msg.reply("No sessions available")
-        else msg.reply(session)
+      getSessionByDisAge(data.district.toLowerCase(), data.age).then(session=>{
+        age = data.age>=18 && data.age< 45 ? "18+":"45+"
+        const embed = new Discord.MessageEmbed()
+            .setTitle(`${data.district} - ${age}`)
+            .setColor(0xff0000)
+            .setDescription(session);
+          msg.channel.send(embed);
       })
     })
   }
+
+  if(msg.content === '/help'){
+    const embed = new Discord.MessageEmbed()
+            .setTitle('Available Commands')
+            .setColor(0xff0000)
+            .setDescription(`
+            **/help** - Display the help menu
+            **/reg_dis <DISTRICT>** - Register district with the bot
+            **/reg_age <AGE>** - Register age with the bot
+            **/check** - Check the available session using registered details
+            **/pin <Pincode>**  - Check available sessions using Pincode 
+            **/dis <District>** - Check available sessions in your district
+            `);
+          msg.channel.send(embed);
+  }
+
+  client.user.setPresence({
+    activity:{
+      name: `"/help" for help menu`
+    }
+  })
 
 });
 
