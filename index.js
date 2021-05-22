@@ -3,6 +3,7 @@ const Discord = require('discord.js');
 const client = new Discord.Client();
 const db = require('./connection');
 const helpers = require('./helpers')
+var cron = require('node-schedule');
 require('dotenv').config()
 
 db.connect((err)=>{
@@ -36,19 +37,19 @@ function getSessionByDisAge(district,age){
   ) 
   .then(({ data }) =>{
     let session = ``
-    let ageGroup = (age>=18 && age<45)?18:45;
+    let ageGroup = (age>=18 && age<45)?"18":"45";
 
     if(data.sessions.length==0){
       return `No sessions available`;
     }
     else{
 
-    for (var i=0;i<data.sessions.length;i++){
-      if(data.sessions[i].min_age_limit === ageGroup && data.sessions[i].available_capacity > 0){
-        temp = `🏥 :${data.sessions[i].name}, 💉 :${data.sessions[i].available_capacity}, 🕰️ :${data.sessions[i].slots} \n`;
-        session = session.concat(temp)
+      for (var i=0;i<data.sessions.length;i++){
+        if(data.sessions[i].min_age_limit === ageGroup && data.sessions[i].available_capacity > 0){
+          temp = `🏥: ${data.sessions[i].name}, 💉: ${data.sessions[i].available_capacity}, 🕰️: ${data.sessions[i].slots} \n`;
+          session = session.concat(temp)
+        }
       }
-    }
     return session
     }
     
@@ -61,6 +62,7 @@ function getSessionByDis(district){
   did=d[district]
   let date = new Date();
   date = `${date.getDate()}-${date.getMonth()+1}-${date.getFullYear()}`
+
   url='https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/findByDistrict?district_id='+did+'&date='+date
   return axios.get(url,
     {
@@ -75,7 +77,7 @@ function getSessionByDis(district){
     
       for (var i=0;i<data.sessions.length;i++){
         if(data.sessions[i].available_capacity > 0){
-          temp = `🏥 :${data.sessions[i].name},🧍 :${data.sessions[i].min_age_limit}+, 💉 :${data.sessions[i].available_capacity}, 🕰️ :${data.sessions[i].slots} \n`;
+          temp = `🏥: ${data.sessions[i].name},🧍: ${data.sessions[i].min_age_limit}+, 💉: ${data.sessions[i].available_capacity}, 🕰️: ${data.sessions[i].slots} \n`;
           session = session.concat(temp)
         }
       }
@@ -118,7 +120,7 @@ function getSessionByPin(pin){
 
 client.on('message', msg => {
   if (msg.content === 'ping') {
-    msg.reply('Pong!');
+    msg.author.send('Pong!');
   }
 
   if (msg.content.startsWith("/pin")){
@@ -136,7 +138,7 @@ client.on('message', msg => {
     getSessionByDis(district.toLowerCase()).then(session =>{
       if(!session){
         const embed = new Discord.MessageEmbed()
-            .setTitle(`Session - ${district}`)
+            .setTitle(`Session - ${district.toUpperCase()}`)
             .setColor(0xff2000)
             .setDescription("No Session Available");
           msg.channel.send(embed);
@@ -150,30 +152,79 @@ client.on('message', msg => {
       } 
     })
     
-}
-  if (msg.content.startsWith("/reg_dis")) {
-    let dis = msg.content.split("/reg_dis ")[1];
-    let id = msg.author.id;
-    helpers.saveDist(id,dis.toLowerCase())
-    }
-  if (msg.content.startsWith("/reg_age")) {
-    let age = msg.content.split("/reg_age ")[1];
-    let id = msg.author.id
-    helpers.saveAge(id,age)
   }
+  if (msg.content.startsWith("/register")) {
+    let dis = msg.content.split("/register ")[1];
+    let id = msg.author.id;
+    helpers.saveDist(id,dis.toLowerCase()).then((data)=> {
+      if(data) msg.reply('Already registered, please use /update command to update')
+    })
+  }
+
+  if(msg.content.startsWith("/update")){
+    let id = msg.author.id;
+    let dis = msg.content.split("/update ")[1];
+    helpers.check(id).then((data)=>{
+      if(data){
+        helpers.update(id, dis.toLowerCase())
+      }
+      else{
+        msg.reply('Please register first')
+      }
+    })
+  }
+  // if (msg.content.startsWith("/reg_age")) {
+  //   let age = msg.content.split("/reg_age ")[1];
+  //   let id = msg.author.id
+  //   helpers.saveAge(id,age)
+  // }
   
-  if(msg.content==="/check"){
-    let id=msg.author.id;
-    helpers.getData(id).then((data)=>{
-      getSessionByDisAge(data.district.toLowerCase(), data.age).then(session=>{
-        age = data.age>=18 && data.age< 45 ? "18+":"45+"
-        const embed = new Discord.MessageEmbed()
-            .setTitle(`${data.district} - ${age}`)
-            .setColor(0xff0000)
-            .setDescription(session);
-          msg.channel.send(embed);
+  if(msg.content.startsWith("/check")){
+    let age = msg.content.split("/check ")[1];
+    if(age<18) msg.reply("Currently no vaccination available for below 18")
+    else{
+      let id=msg.author.id;
+      helpers.getData(id).then((data)=>{
+      getSessionByDisAge(data.district.toLowerCase(), age).then(session=>{
+        a = age>=18 && age< 45 ? "18+":"45+" 
+        if(!session){
+          const embed = new Discord.MessageEmbed()
+              .setTitle(`${data.district.toUpperCase()}  ${a}`)
+              .setColor(0xff2000)
+              .setDescription("No Session Available");
+            msg.channel.send(embed);
+        }
+        else{
+          const embed = new Discord.MessageEmbed()
+              .setTitle(`${data.district.toUpperCase()}  ${a}`)
+              .setColor(0xff0000)
+              .setDescription(session);
+            msg.channel.send(embed);
+        } 
       })
     })
+    }
+  }
+
+  if(msg.content === '/get_updates'){
+    let id = msg.author.id;
+    helpers.check(id).then((flag)=>{
+      if(flag){
+        helpers.getData(id).then((userData)=>{
+          let dis = userData.district;
+          cron.scheduleJob('0 * * * *', function(){
+            getSessionByDis(dis).then(session => {
+              console.log('This runs at the 30th mintue of every hour.');
+            })
+          }); 
+        })
+        
+      }
+      else{
+        msg.reply("Please register to get updates")
+      }
+    })
+    
   }
 
   if(msg.content === '/help'){

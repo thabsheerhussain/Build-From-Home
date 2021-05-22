@@ -2,21 +2,19 @@ var db = require('./connection')
 
 module.exports = {
     saveDist:(id,dis)=>{
-            let data = {
-                discordId : id,
-                district : dis,
-                age : null
+        return new Promise(async (resolve, reject)=>{
+            
+            let user = await db.get().collection('users').findOne({discordId:id})
+            if(user){
+                resolve(true)
             }
-            db.get().collection('users').insertOne(data)
-    },
-    saveAge:(id,age)=>{
-        return new Promise((resolve,reject)=>{
-            db.get().collection('users').updateOne({discordId:id},
-                {
-                    $set:{
-                        age:age
-                    }
-                })  
+            else{
+                let data = {
+                    discordId : id,
+                    district : dis,
+                }
+                db.get().collection('users').insertOne(data)
+            }
         })
     },
     getData:(id)=>{
@@ -24,5 +22,23 @@ module.exports = {
          let data = await db.get().collection('users').findOne({discordId:id})
         resolve(data)
         })
+    },
+    check:(id)=>{
+        return new Promise(async (resolve, reject)=>{
+            
+            let user = await db.get().collection('users').findOne({discordId:id})
+            if(user){
+                resolve(true)
+            }
+            else resolve(false)
+        })
+    },
+    update:(id, dis)=>{
+        db.get().collection('users').updateOne({discordId:id},
+            {
+                $set:{
+                    district : dis,
+                }
+            })
     }
 }
