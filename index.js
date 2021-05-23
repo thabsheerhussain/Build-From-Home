@@ -15,20 +15,31 @@ db.connect((err)=>{
 
 client.on('ready',async () => {
   console.log(`Logged in as ${client.user.tag}!`)
+  cron.scheduleJob('* * * * *', async ()=>{
     userList =await helpers.updateList()
-    console.log(userList);
     for(i=0;i<userList.length;i++){
      var id = userList[i].discordId
      var district = userList[i].district
-     var user =await client.users.fetch(id)
-     console.log(user);
-     user.send('Message')
+     getSessionByDis(district).then(async(session)=>{
+      var user =await client.users.fetch(id)
+      if(!session){
+        const embed = new Discord.MessageEmbed()
+            .setTitle(`${district}`)
+            .setColor(0xff2000)
+            .setDescription("No Session Available");
+          user.send(embed);
+      }
+      else{
+        const embed = new Discord.MessageEmbed()
+            .setTitle(`${district}`)
+            .setColor(0xff0000)
+            .setDescription(session);
+          user.send(embed);
+      } 
+     })
     }
-    // var testchannel = client.channels.cache.find(channel => channel.id == '843022826247159822')
-    // testchannel.send('MESSAGE')
-    
-    // }
-  })
+  });   
+})
 
 
 d = {"alappuzha":301,"ernakulam":307,"idukki":306,"kannur":297,"kasargod":295,
