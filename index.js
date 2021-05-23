@@ -13,9 +13,23 @@ db.connect((err)=>{
   console.log("DATABASE CONNECTED");
 })
 
-client.on('ready', () => {
-  console.log(`Logged in as ${client.user.tag}!`);
-});
+client.on('ready',async () => {
+  console.log(`Logged in as ${client.user.tag}!`)
+    userList =await helpers.updateList()
+    console.log(userList);
+    for(i=0;i<userList.length;i++){
+     var id = userList[i].discordId
+     var district = userList[i].district
+     var user =await client.users.fetch(id)
+     console.log(user);
+     user.send('Message')
+    }
+    // var testchannel = client.channels.cache.find(channel => channel.id == '843022826247159822')
+    // testchannel.send('MESSAGE')
+    
+    // }
+  })
+
 
 d = {"alappuzha":301,"ernakulam":307,"idukki":306,"kannur":297,"kasargod":295,
 "kollam":298,"kottayam":304,"kozhikode":305,"malappuram":302,"palakkad":308,
@@ -210,15 +224,7 @@ client.on('message', msg => {
     let id = msg.author.id;
     helpers.check(id).then((flag)=>{
       if(flag){
-        helpers.getData(id).then((userData)=>{
-          let dis = userData.district;
-          cron.scheduleJob('0 * * * *', function(){
-            getSessionByDis(dis).then(session => {
-              console.log('This runs at the 30th mintue of every hour.');
-            })
-          }); 
-        })
-        
+        helpers.register4updates(id);  
       }
       else{
         msg.reply("Please register to get updates")
@@ -233,11 +239,11 @@ client.on('message', msg => {
             .setColor(0xff0000)
             .setDescription(`
             **/help** - Display the help menu
-            **/reg_dis <DISTRICT>** - Register district with the bot
-            **/reg_age <AGE>** - Register age with the bot
-            **/check** - Check the available session using registered details
+            **/register <DISTRICT>** - Register district with the bot
+            **/check <AGE>** - Specify the age group to get session details of the registered district
+            **/update <DISTRICT>** - Update the registered district. You need to register first inorder to use this command
             **/pin <Pincode>**  - Check available sessions using Pincode 
-            **/dis <District>** - Check available sessions in your district
+            **/dis <District>** - Check available sessions in any district
             `);
           msg.channel.send(embed);
   }

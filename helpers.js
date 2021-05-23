@@ -12,6 +12,7 @@ module.exports = {
                 let data = {
                     discordId : id,
                     district : dis,
+                    updates: false
                 }
                 db.get().collection('users').insertOne(data)
             }
@@ -40,5 +41,20 @@ module.exports = {
                     district : dis,
                 }
             })
+    },
+    register4updates:(id)=>{
+        return new Promise((resolve,reject)=>{
+            db.get().collection('users').updateOne({discordId:id},
+                {
+                    $set:{
+                        updates : true,
+                    }
+                })
+        })
+    },updateList:()=>{
+        return new Promise(async (resolve,reject)=>{
+          let users = await db.get().collection('users').find({updates:true}).toArray()
+          resolve(users)
+        })
     }
 }
