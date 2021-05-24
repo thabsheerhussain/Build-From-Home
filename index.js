@@ -13,30 +13,29 @@ db.connect((err)=>{
   console.log("DATABASE CONNECTED");
 })
 
-client.on('ready',async () => {
+client.on('ready', () => {
   console.log(`Logged in as ${client.user.tag}!`)
   cron.scheduleJob('* * * * *', async ()=>{
     userList =await helpers.updateList()
     for(i=0;i<userList.length;i++){
      var id = userList[i].discordId
      var district = userList[i].district
-     getSessionByDis(district).then(async(session)=>{
+     var session = await getSessionByDis(district)
       var user =await client.users.fetch(id)
       if(!session){
         const embed = new Discord.MessageEmbed()
-            .setTitle(`${district}`)
+            .setTitle(`${district.toUpperCase()}`)
             .setColor(0xff2000)
             .setDescription("No Session Available");
           user.send(embed);
       }
       else{
         const embed = new Discord.MessageEmbed()
-            .setTitle(`${district}`)
+            .setTitle(`${district.toUpperCase()}`)
             .setColor(0xff0000)
             .setDescription(session);
           user.send(embed);
       } 
-     })
     }
   });   
 })
@@ -255,6 +254,7 @@ client.on('message', msg => {
             **/update <DISTRICT>** - Update the registered district. You need to register first inorder to use this command
             **/pin <Pincode>**  - Check available sessions using Pincode 
             **/dis <District>** - Check available sessions in any district
+            **/get_updates** - Get hourly updates with your registered data using this command
             `);
           msg.channel.send(embed);
   }
