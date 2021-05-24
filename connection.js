@@ -1,10 +1,11 @@
 const mongoClient=require('mongodb').MongoClient;
+require('dotenv').config()
 const state={
     db:null
 }
 
 module.exports.connect=function(done){
-    const url='mongodb+srv://thabsheer:thabsheer@123@cluster0.h94qs.mongodb.net/User.data?retryWrites=true&w=majority&useNewUrlParser=true&useUnifiedTopology=true';
+    const url=process.env.MONGO_URL;
 
     mongoClient.connect(url,(err,data)=>{
         if(err) return done(err)
