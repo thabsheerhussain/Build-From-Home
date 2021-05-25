@@ -50,8 +50,8 @@ d = {"alappuzha":301,"ernakulam":307,"idukki":306,"kannur":297,"kasargod":295,
 "pathanamthitta":300,"thiruvananthapuram":296,"thrissur":303,"wayanad":299,"east sikkim":535,
 "north sikkim":537,"south sikkim":538,"west sikkim":536,"north goa":151,"south goa":152}
 
-function getSessionByDisAge(district,age){
-  did=d[district]
+function getSessionByDisAge(did,age){
+  
   let date = new Date();
   date = `${date.getDate()}-${date.getMonth()+1}-${date.getFullYear()}`
   url='https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/findByDistrict?district_id='+did+'&date='+date
@@ -78,8 +78,8 @@ function getSessionByDisAge(district,age){
   .catch((err) => console.log(err));
 }
 
-function getSessionByDis(district){
-  did=d[district]
+function getSessionByDis(did){
+  
   let date = new Date();
   date = `${date.getDate()}-${date.getMonth()+1}-${date.getFullYear()}`
 
@@ -125,7 +125,7 @@ function getSessionByPin(pin){
     var ss=``
     for (var i=0;i<data.sessions.length;i++){
       if(data.sessions[i].available_capacity > 0){     
-        t=`🏥 :${data.sessions[i].name}, 💉: ${data.sessions[i].available_capacity}, 🕰️: ${data.sessions[i].slots} \n`;
+        t=`🏥: ${data.sessions[i].name}, 💉: ${data.sessions[i].available_capacity}, 🕰️: ${data.sessions[i].slots} \n`;
         ss = ss.concat(t)
       }
     }
@@ -141,56 +141,74 @@ client.on('message', msg => {
 
   if (msg.content.startsWith("/pin")){
     pin = msg.content.split("/pin ")[1]
-    getSessionByPin(pin).then(session=>{
-      if(!session){
-        const embed = new Discord.MessageEmbed()
-            .setTitle(`Session - ${pin}`)
-            .setColor(0xff0000)
-            .setDescription("No Session Available");
-          msg.channel.send(embed);
-      }
-      else{
-        const embed = new Discord.MessageEmbed()
-            .setTitle(`Session - ${pin}`)
-            .setColor(0x00ff00)
-            .setDescription(session);
-          msg.channel.send(embed);
-      } 
-    })
-  }
-  if(msg.content.startsWith("/dis")){
-    district = msg.content.split("/dis ")[1]
-    getSessionByDis(district.toLowerCase()).then(session =>{
-      if(!session){
-        const embed = new Discord.MessageEmbed()
-            .setTitle(`Session - ${district.toUpperCase()}`)
-            .setColor(0xff0000)
-            .setDescription("No Session Available");
-          msg.channel.send(embed);
-      }
-      else{
-        const embed = new Discord.MessageEmbed()
-            .setTitle(`Session - ${district.toUpperCase()}`)
-            .setColor(0x00ff00)
-            .setDescription(session);
-          msg.channel.send(embed);
-      } 
-    })
+    if(pin.length != 6){
+      msg.reply("Please enter a valid Pincode")
+    }
+    else{
+      getSessionByPin(pin).then(session=>{
+        if(!session){
+          const embed = new Discord.MessageEmbed()
+              .setTitle(`Session - ${pin}`)
+              .setColor(0xff0000)
+              .setDescription("No Session Available");
+            msg.channel.send(embed);
+        }
+        else{
+          const embed = new Discord.MessageEmbed()
+              .setTitle(`Session - ${pin}`)
+              .setColor(0x00ff00)
+              .setDescription(session);
+            msg.channel.send(embed);
+        } 
+      })
+    }
     
   }
+  if(msg.content.startsWith("/dis")){
+    district = msg.content.split("/dis ")[1].toLowerCase()
+    if(district in d){
+      did=d[district]
+    getSessionByDis(did).then(session =>{
+      if(!session){
+        const embed = new Discord.MessageEmbed()
+            .setTitle(`Session - ${district.toUpperCase()}`)
+            .setColor(0xff0000)
+            .setDescription("No Session Available");
+          msg.channel.send(embed);
+      }
+      else{
+        const embed = new Discord.MessageEmbed()
+            .setTitle(`Session - ${district.toUpperCase()}`)
+            .setColor(0x00ff00)
+            .setDescription(session);
+          msg.channel.send(embed);
+      } 
+    })
+    }else{
+      msg.reply(`Sorry, I can't find the entered district.`)
+    }
+    
+  }
+
+
   if (msg.content.startsWith("/register")) {
-    let dis = msg.content.split("/register ")[1];
+    let dis = msg.content.split("/register ")[1]
     let id = msg.author.id;
     helpers.check(id).then((user)=>{
       if(user){
         msg.reply(`Already registered, please use "/update" command to update`)
       }
       else{
-        helpers.saveDist(id, dis.toLowerCase()).then((data)=>{
-          if(data){
-            msg.reply(`Successfully registered`)
-          }
-        })
+        if(dis in d){
+          helpers.saveDist(id, dis.toLowerCase()).then((data)=>{
+            if(data){
+              msg.reply(`Successfully registered`)
+            }
+          })
+        }
+        else{
+          msg.reply("Please enter correct District name")
+        }
       }
     })
   }
@@ -200,9 +218,14 @@ client.on('message', msg => {
     let dis = msg.content.split("/update ")[1];
     helpers.check(id).then((data)=>{
       if(data){
-        helpers.update(id, dis.toLowerCase()).then((data)=>{
-          if(data) msg.reply("Data Updated")
-        })
+        if (dis in d){
+          helpers.update(id, dis.toLowerCase()).then((data)=>{
+            if(data) msg.reply("Data Updated")
+          })
+        }
+        else{
+          msg.reply("Please enter correct District name")
+        }
       }
       else{
         msg.reply('Please register first')
@@ -269,7 +292,7 @@ client.on('message', msg => {
           }
           else{
             helpers.register4updates(id).then((res)=>{
-              msg.reply("You've been successfully registered for the hourly updates feature")
+              msg.reply("You've been successfully registered for the hourly updates feature. You will receive updates in dm")
             })
           }
         })
